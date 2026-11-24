@@ -132,6 +132,10 @@ upgrade, so the new version's dependencies are resolved from scratch rather than
         }
     }
 
+  Remember to raise this setting together with the PHP version in your `require` section. Composer can't create a lock
+  file if the overridden PHP version doesn't meet your own requirements. Also note that some packages require a
+  minimum patch version, e.g. `~8.2.27`, so you might have to set a higher patch version than `.0`.
+
 .. _developers-private-repositories:
 
 Private Repositories
