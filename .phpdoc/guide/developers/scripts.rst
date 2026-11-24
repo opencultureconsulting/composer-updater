@@ -154,9 +154,27 @@ certain versions.
 
 .. note::
 
-  The `post-install-cmd` and `post-update-cmd` scripts of your application also run during the upgrade, because the
-  plugin installs the new version's dependencies with `composer install`. A failure of these scripts fails the
-  installation of the dependencies and triggers a rollback.
+  Your application's other Composer scripts run during the upgrade, too, because the plugin installs the new version's
+  dependencies with `composer install`. Which ones depends on whether the new version contains a `composer.lock`:
+
+  * **With a lock file**, the `pre-install-cmd` and `post-install-cmd` scripts run.
+  * **Without a lock file**, `composer install` resolves the dependencies like `composer update`, so the
+    `pre-update-cmd` and `post-update-cmd` scripts run instead, and the install scripts *don't*.
+
+  The same applies to `composer create-project` when your users install the application. If you rely on install
+  scripts, e.g. to create a configuration file or to clear caches, either :ref:`ship a lock file
+  <developers-lock-file>` (recommended) or reference them from the update scripts as well:
+
+  .. code-block:: json
+
+    {
+        "scripts": {
+            "post-install-cmd": "@php bin/console cache:clear",
+            "post-update-cmd": "@post-install-cmd"
+        }
+    }
+
+  A failure of any of these scripts fails the installation of the dependencies and triggers a rollback.
 
 Testing Scripts
 ===============

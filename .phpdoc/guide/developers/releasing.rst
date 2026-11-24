@@ -23,7 +23,8 @@ The plugin uses Composer's understanding of versions:
 
 When selecting the latest version, the plugin skips releases whose platform requirements (PHP version and extensions in
 the `require` section) aren't met by the user's server. Users on older servers therefore automatically get the newest
-release they can run. Make sure your `require` section is accurate:
+release they can run. The plugin checks against the PHP version and extensions actually available, ignoring any
+`config.platform` overrides in your `composer.json`. Make sure your `require` section is accurate:
 
 .. code-block:: json
 
@@ -40,7 +41,8 @@ Release Checklist
 
 Before publishing a release, check that
 
-* `composer.json` and `composer.lock` are committed and up to date,
+* `composer.json` and `composer.lock` are committed and up to date (see :ref:`shipping a lock file
+  <developers-lock-file>`),
 * the `require` section lists the correct PHP version and all required extensions,
 * the :doc:`replace rules <configuration>` cover all new directories, e.g. a new directory for user data is ignored,
 * directories removed or renamed since the last release are mirrored, so they're deleted from installations,

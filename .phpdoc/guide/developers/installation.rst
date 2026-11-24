@@ -81,6 +81,7 @@ Recommended Setup
 
 The defaults work for many applications, but most applications benefit from some configuration:
 
+* Ship your application with a `composer.lock` (see :ref:`below <developers-lock-file>`).
 * Configure the :doc:`replace rules <configuration>`, so local configuration and user data are kept, and files removed
   from your application are deleted from the installations.
 * Add a :doc:`post-upgrade-cmd script <scripts>` to run database migrations and clear caches.
@@ -89,6 +90,47 @@ The defaults work for many applications, but most applications benefit from some
   :doc:`User Guide <../users/index>`.
 
 The :doc:`examples <examples>` show complete configurations for typical applications.
+
+.. _developers-lock-file:
+
+Shipping a Lock File
+====================
+
+It is strongly recommended to commit your application's `composer.lock` and to include it in your releases (i.e. not
+to exclude it with `export-ignore` in your `.gitattributes`). Many applications don't, because Composer's
+documentation recommends against committing the lock file for *libraries*. But an application installed with
+`composer create-project` isn't a library, and a lock file has several advantages for it:
+
+* **Tested dependencies:** Every installation of a release gets exactly the versions of your dependencies you tested
+  the release with, both with `composer create-project` and with `composer app:upgrade`. Without a lock file, the
+  dependencies are resolved anew on every installation, so your users might get newer, untested versions.
+* **Faster and more reliable upgrades:** Installing from a lock file doesn't need to resolve dependencies, which is
+  faster and less likely to fail, e.g. because of a temporarily unavailable package.
+* **Predictable scripts:** Composer runs different scripts depending on whether there is a lock file. With a lock file,
+  `composer install` runs the `pre-install-cmd` and `post-install-cmd` scripts. Without one, it resolves the
+  dependencies like `composer update` and runs the `pre-update-cmd` and `post-update-cmd` scripts instead. This also
+  applies to `composer create-project` and to the dependency installation during an upgrade (see
+  :doc:`upgrade scripts <scripts>`).
+
+If your release doesn't contain a lock file, the plugin removes the installation's existing lock file during the
+upgrade, so the new version's dependencies are resolved from scratch rather than installed from an outdated lock file.
+
+.. tip::
+
+  Set the `config.platform.php` option in your `composer.json` to the lowest PHP version you support. Then the lock
+  file doesn't contain dependency versions which require a newer PHP version than your users might have, no matter
+  which PHP version you create the lock file with. The plugin ignores this setting when checking which versions your
+  users' servers can run, so it doesn't keep them from upgrading to releases requiring a newer PHP version.
+
+  .. code-block:: json
+
+    {
+        "config": {
+            "platform": {
+                "php": "8.2.0"
+            }
+        }
+    }
 
 .. _developers-private-repositories:
 

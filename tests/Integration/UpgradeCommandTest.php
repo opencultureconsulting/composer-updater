@@ -197,6 +197,7 @@ final class UpgradeCommandTest extends FilesystemTestCase
 
         $output = $this->composer($app, ['app:upgrade', '2.0.0'], 1);
         self::assertStringContainsString('Version 2.0.0 requires php >=99', $output);
+        self::assertStringNotContainsString('UpgradeCommand.php', $output, 'Errors must not be shown as stack traces.');
 
         $output = $this->composer($app, ['app:upgrade', 'dev-main', '--dev']);
         self::assertStringContainsString('acme/app dev-main was installed successfully.', $output);
@@ -258,12 +259,46 @@ final class UpgradeCommandTest extends FilesystemTestCase
         $output = $this->composer($app, ['app:upgrade', '1.1.0'], 1);
 
         self::assertStringContainsString('already exists', $output);
+        self::assertStringNotContainsString('You are about to', $output, 'The check must precede the confirmation.');
         self::assertSame($before, $this->readTree($app), 'Neither files nor pre-upgrade-cmd must have run.');
 
         $output = $this->composer($app, ['app:upgrade', '1.1.0', '--no-backup'], 1);
 
         self::assertStringContainsString('already exists', $output, 'The check must not depend on making a backup.');
         self::assertSame($before, $this->readTree($app));
+    }
+
+    /**
+     * Tests checking the platform requirements against the real platform, ignoring "config.platform".
+     *
+     * @return void
+     */
+    public function testPlatformOverridesAreIgnored(): void
+    {
+        $app = $this->deploy('1.1.0');
+        $this->composer($app, ['config', 'platform.php', '99.0.0']);
+
+        $output = $this->composer($app, ['app:upgrade', '--list']);
+        self::assertStringContainsString('2.0.0 (platform requirements not met)', $output);
+
+        $output = $this->composer($app, ['app:upgrade', '2.0.0'], 1);
+        self::assertStringContainsString('Version 2.0.0 requires php >=99', $output);
+    }
+
+    /**
+     * Tests installing a version with unmet platform requirements.
+     *
+     * @return void
+     */
+    public function testIgnorePlatformReqs(): void
+    {
+        $app = $this->deploy('1.1.0');
+
+        $output = $this->composer($app, ['app:upgrade', '2.0.0', '--ignore-platform-reqs']);
+
+        self::assertStringContainsString('acme/app 2.0.0 was installed successfully.', $output);
+        self::assertSame('2.0.0', $this->recordedVersion($app));
+        self::assertSame('common 2.0.0', file_get_contents($app . '/src/Common.php'));
     }
 
     /**

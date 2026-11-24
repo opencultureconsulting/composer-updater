@@ -177,8 +177,8 @@ Options
   Installs the requested version even if it is the same as or older than the installed version.
 
 `--ignore-platform-reqs`
-  Ignores the PHP version and PHP extensions required by the requested version. Only use this if you know what you're
-  doing: the new version may not work on your server.
+  Ignores the PHP version and PHP extensions required by the requested version and its dependencies. Only use this if
+  you know what you're doing: the new version may not work on your server.
 
 `--no-backup`
   Skips the backup of the current version. This saves time and disk space for very large installations, but also
@@ -191,7 +191,7 @@ Options
   Runs the command for the application in the given directory instead of the current one.
 
 `--verbose`, `-v`, `-vv`, `-vvv`
-  Shows more details, including the commands run by the plugin.
+  Shows more details, including the commands run by the plugin and the full details of errors.
 
 Exit Codes
 ----------

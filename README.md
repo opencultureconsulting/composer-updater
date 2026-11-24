@@ -43,7 +43,7 @@ Make sure your `composer.json` has a `name` and your application is available fr
 
 The `pre-upgrade-cmd` script is taken from the version *currently installed*. The `post-upgrade-cmd` script and the configuration are taken from the version *being installed*, so each release defines how it is installed. Both scripts can read the environment variables `COMPOSER_UPDATER_PREVIOUS_VERSION` and `COMPOSER_UPDATER_VERSION`, which hold the versions upgraded from and to.
 
-Make sure to commit your `composer.lock`, so every installation of a release gets exactly the dependencies you tested.
+It is strongly recommended to ship your application with a `composer.lock` (i.e. commit it and don't exclude it with `export-ignore`), so every installation of a release gets exactly the dependencies you tested. This also makes Composer's script events predictable: Without a lock file, `composer install` and `composer create-project` resolve the dependencies like `composer update` and run the `pre-update-cmd` and `post-update-cmd` scripts instead of `pre-install-cmd` and `post-install-cmd`.
 
 ### For users of the application
 

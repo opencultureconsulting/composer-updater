@@ -82,11 +82,13 @@ final class Upgrader
      * @param Composer $composer The Composer instance of the current installation
      * @param IOInterface $io The input/output handler
      * @param string $projectDir The project directory
+     * @param bool $ignorePlatformReqs Whether to ignore the platform requirements when installing dependencies
      */
     public function __construct(
         private readonly Composer $composer,
         private readonly IOInterface $io,
-        private readonly string $projectDir
+        private readonly string $projectDir,
+        private readonly bool $ignorePlatformReqs = false
     ) {
         // Everything is run in separate processes to avoid mixing old and new code.
         $this->process = new ComposerProcess($io, $projectDir);
@@ -110,17 +112,7 @@ final class Upgrader
             'COMPOSER_UPDATER_PREVIOUS_VERSION' => $current['pretty_version'] ?? '',
             'COMPOSER_UPDATER_VERSION' => $target->getPrettyVersion()
         ];
-        $backupDir = $this->projectDir . '/' . self::BACKUP_DIR;
-        if (Files::exists($backupDir)) {
-            // Checked even without backup, since the directory may hold the only copy of files from a failed upgrade.
-            throw new RuntimeException(
-                sprintf(
-                    'The backup directory "%s" already exists. It may contain files left from a failed upgrade.'
-                    . ' Check and remove it before trying again.',
-                    $backupDir
-                )
-            );
-        }
+        $this->checkLeftoverBackup();
         try {
             $this->download($target, $tempDir);
             $config = ReleaseConfig::fromDirectory(
@@ -278,6 +270,30 @@ final class Upgrader
     }
 
     /**
+     * Makes sure there is no backup left from a failed upgrade.
+     *
+     * This is checked even without making a backup, since the directory may hold the only copy of files from a
+     * failed upgrade.
+     *
+     * @return void
+     *
+     * @throws RuntimeException if the backup directory exists
+     */
+    public function checkLeftoverBackup(): void
+    {
+        $backupDir = $this->projectDir . '/' . self::BACKUP_DIR;
+        if (Files::exists($backupDir)) {
+            throw new RuntimeException(
+                sprintf(
+                    'The backup directory "%s" already exists. It may contain files left from a failed upgrade.'
+                    . ' Check and remove it before trying again.',
+                    $backupDir
+                )
+            );
+        }
+    }
+
+    /**
      * Installs the dependencies of the new version.
      *
      * @param PackageInterface $target The new version
@@ -293,6 +309,9 @@ final class Upgrader
         $args = ['install'];
         if ($this->composer->getRepositoryManager()->getLocalRepository()->getDevMode() !== true) {
             $args[] = '--no-dev';
+        }
+        if ($this->ignorePlatformReqs) {
+            $args[] = '--ignore-platform-reqs';
         }
         $env['COMPOSER_ROOT_VERSION'] = $target->getPrettyVersion();
         if ($this->process->run($args, $env) !== 0) {

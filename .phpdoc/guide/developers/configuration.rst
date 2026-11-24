@@ -181,4 +181,5 @@ Bitbucket. Use them to keep tests, tool configurations and other development fil
 
   If your release doesn't contain a `composer.lock`, the existing lock file of the installation is removed and
   `composer install` resolves the dependencies from scratch. Your users might get untested versions of your
-  dependencies then. Always commit your `composer.lock` and don't exclude it with `export-ignore`.
+  dependencies then. Always commit your `composer.lock` and don't exclude it with `export-ignore` (see
+  :ref:`shipping a lock file <developers-lock-file>`).

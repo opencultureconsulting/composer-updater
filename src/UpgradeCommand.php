@@ -23,13 +23,13 @@ declare(strict_types=1);
 namespace OCC\ComposerUpdater;
 
 use Composer\Command\BaseCommand;
-use Composer\Composer;
 use Composer\Factory;
 use Composer\IO\IOInterface;
 use Composer\Package\PackageInterface;
 use Composer\Repository\PlatformRepository;
 use Override;
 use RuntimeException;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -115,6 +115,30 @@ final class UpgradeCommand extends BaseCommand
     #[Override]
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        try {
+            return $this->upgrade($input);
+        } catch (RuntimeException $exception) {
+            if ($this->getIO()->isVerbose()) {
+                throw $exception;
+            }
+            $this->getIO()->writeError(
+                ['', '<error>' . OutputFormatter::escape($exception->getMessage()) . '</error>']
+            );
+            return 1;
+        }
+    }
+
+    /**
+     * Performs the upgrade (or lists the available versions).
+     *
+     * @param InputInterface $input The input
+     *
+     * @return int 0 if everything went fine, or an error code
+     *
+     * @throws RuntimeException if upgrading fails
+     */
+    private function upgrade(InputInterface $input): int
+    {
         $composer = $this->requireComposer();
         $io = $this->getIO();
         $name = $composer->getPackage()->getName();
@@ -126,11 +150,13 @@ final class UpgradeCommand extends BaseCommand
         $current = VersionStore::current($composer);
         $io->write(sprintf('Current version of <info>%s</info>: %s', $name, $this->format($current)));
 
+        // The real platform is used, since "config.platform" describes the platform the lock file is created for,
+        // not the server the application is running on.
         $releases = Releases::fetch(
             $name,
             $composer->getRepositoryManager()->getRepositories(),
             $dev,
-            (bool) $input->getOption('ignore-platform-reqs') ? null : $this->createPlatformRepository($composer)
+            (bool) $input->getOption('ignore-platform-reqs') ? null : new PlatformRepository()
         );
 
         if ((bool) $input->getOption('list')) {
@@ -142,14 +168,21 @@ final class UpgradeCommand extends BaseCommand
         $target = $this->selectTarget($releases, is_string($requested) ? $requested : 'latest', $dev);
         $this->checkVersion($current, $target, (bool) $input->getOption('force'));
 
+        $upgrader = new Upgrader(
+            $composer,
+            $io,
+            $this->getProjectDir(),
+            (bool) $input->getOption('ignore-platform-reqs')
+        );
+        $upgrader->checkLeftoverBackup();
+
         $io->write(sprintf('Target version: <info>%s</info>', $target->getFullPrettyVersion()));
         if (!$this->confirm($io, $target)) {
             $io->writeError('Aborted.');
             return 1;
         }
 
-        (new Upgrader($composer, $io, $this->getProjectDir()))
-            ->run($target, $current, !(bool) $input->getOption('no-backup'));
+        $upgrader->run($target, $current, !(bool) $input->getOption('no-backup'));
 
         $io->write(['', sprintf('<info>%s %s was installed successfully.</info>', $name, $target->getPrettyVersion())]);
         return 0;
@@ -169,16 +202,15 @@ final class UpgradeCommand extends BaseCommand
             '',
             '<warning>You are about to replace the application\'s files and run its upgrade scripts.</warning>',
             '<warning>This may include database migrations which can lead to data loss.</warning>',
-            '<warning>Carefully read the release notes and always keep a BACKUP!</warning>',
-            ''
+            '<warning>Carefully read the release notes and always keep a BACKUP!</warning>'
         ]);
         if ($target->isDev()) {
             $io->write([
-                '<comment>Development versions are considered unstable and not suitable for production.</comment>',
-                ''
+                '',
+                '<comment>Development versions are considered unstable and not suitable for production.</comment>'
             ]);
         }
-        return $io->askConfirmation('Continue? [<comment>Y,n</comment>] ', true);
+        return $io->askConfirmation(PHP_EOL . 'Continue? [<comment>Y,n</comment>] ', true);
     }
 
     /**
@@ -290,25 +322,6 @@ final class UpgradeCommand extends BaseCommand
             );
         }
         return $target;
-    }
-
-    /**
-     * Creates the platform repository honoring the "platform" configuration.
-     *
-     * @param Composer $composer The Composer instance
-     *
-     * @return PlatformRepository The platform repository
-     */
-    private function createPlatformRepository(Composer $composer): PlatformRepository
-    {
-        $config = $composer->getConfig()->get('platform');
-        $overrides = [];
-        foreach (is_array($config) ? $config : [] as $name => $version) {
-            if (is_string($name) && (is_string($version) || $version === false)) {
-                $overrides[$name] = $version;
-            }
-        }
-        return new PlatformRepository([], $overrides);
     }
 
     /**
