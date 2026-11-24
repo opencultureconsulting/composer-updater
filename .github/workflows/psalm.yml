@@ -1,0 +1,67 @@
+name: Psalm Static Analyzer
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  Psalm:
+    name: Psalm Scanner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer:v2
+          coverage: none
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer Packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Run Psalm
+        run: vendor/bin/psalm --no-progress --output-format=github --report=psalm-results.sarif
+
+      - name: Run Psalm Security Analysis
+        if: success() || failure()
+        run: vendor/bin/psalm --no-progress --taint-analysis --output-format=github --report=psalm-security-results.sarif
+
+      - name: Upload Analysis Results
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: psalm-results.sarif
+          category: psalm
+          wait-for-processing: true
+
+      - name: Upload Security Analysis Results
+        if: success() || failure()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: psalm-security-results.sarif
+          category: psalm-security
+          wait-for-processing: true

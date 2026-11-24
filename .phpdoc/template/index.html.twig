@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+
+{% block content %}
+<section>
+    <ul class="phpdocumentor-breadcrumbs">
+        <li><a href>Home</a></li>
+    </ul>
+
+    <h2 class="phpdocumentor-content__title">Updater for Composer-based Applications</h2>
+
+    <p class="phpdocumentor-summary">A self-update CLI command for any application managed with
+    <a href="https://getcomposer.org/">Composer</a>.</p>
+
+    <p>Add the plugin to your application, and your users can list, download and install any of its versions with a
+    single command: <code>composer app:upgrade</code>. The new version's dependencies are installed, the application's
+    own upgrade tasks are run, and if anything goes wrong, the previous version is restored automatically.</p>
+
+    <ul>
+        <li><a href="guides/developers/index.html">Developer Guide</a>: add the self-updater to your application</li>
+        <li><a href="guides/users/index.html">User Guide</a>: upgrade an application which comes with the self-updater</li>
+    </ul>
+
+    <p>This application follows the highest coding standards of <a href="https://psalm.dev/">Psalm</a>,
+    <a href="https://phpstan.org/">PHPStan</a>, <a href="https://phpmd.org/">PHP Mess Detector</a>,
+    <a href="https://github.com/PHPCSStandards/PHP_CodeSniffer/">PHP_CodeSniffer</a>, and complies to
+    <a href="https://www.php-fig.org/psr/psr-12/">PSR-12</a> code style guidelines to make sure it is reliable,
+    maintainable and easily reusable. It is covered by unit and integration tests with
+    <a href="https://phpunit.de/">PHPUnit</a>.</p>
+
+    <h3 id="toc">Table of Contents</h3>
+
+    {% include('components/toc.html.twig') %}
+</section>
+{% endblock %}
