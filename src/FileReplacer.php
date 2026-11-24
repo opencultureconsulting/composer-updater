@@ -113,19 +113,51 @@ final class FileReplacer
             }
             return;
         }
-        if (!$sourceIsDir) {
-            if (!is_link($targetNode) && is_dir($targetNode) && $this->hasProtectedPathsBelow($relPath)) {
-                throw new RuntimeException(
-                    sprintf(
-                        'Cannot replace directory "%s" with a file, because it contains preserved or ignored paths.',
-                        $targetNode
-                    )
-                );
-            }
-            $this->prepareChange($targetNode);
-            Files::copy($sourceNode, $targetNode);
-            return;
+        if ($sourceIsDir) {
+            $this->syncChildDirectory($relPath, $sourceNode, $targetNode);
+        } else {
+            $this->syncFile($relPath, $sourceNode, $targetNode);
         }
+    }
+
+    /**
+     * Synchronizes a single file or symlink.
+     *
+     * @param string $relPath The node's path relative to the root
+     * @param string $sourceNode The node's absolute path in the new release
+     * @param string $targetNode The node's absolute path in the installation
+     *
+     * @return void
+     *
+     * @throws RuntimeException if a file operation fails
+     */
+    private function syncFile(string $relPath, string $sourceNode, string $targetNode): void
+    {
+        if (!is_link($targetNode) && is_dir($targetNode) && $this->hasProtectedPathsBelow($relPath)) {
+            throw new RuntimeException(
+                sprintf(
+                    'Cannot replace directory "%s" with a file, because it contains preserved or ignored paths.',
+                    $targetNode
+                )
+            );
+        }
+        $this->prepareChange($targetNode);
+        Files::copy($sourceNode, $targetNode);
+    }
+
+    /**
+     * Synchronizes a directory below the root.
+     *
+     * @param string $relPath The directory's path relative to the root
+     * @param string $sourceNode The directory's absolute path in the new release
+     * @param string $targetNode The directory's absolute path in the installation
+     *
+     * @return void
+     *
+     * @throws RuntimeException if a file operation fails
+     */
+    private function syncChildDirectory(string $relPath, string $sourceNode, string $targetNode): void
+    {
         // Symlinks to directories are kept, and files are merged into the directory they point to.
         if (is_dir($targetNode)) {
             $this->syncDirectory($relPath);
